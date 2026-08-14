@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from app.database import get_db
 
@@ -15,6 +16,11 @@ from app.models.household import (
     Household as HouseholdModel,
     Member as MemberModel
 )
+
+from app.models.rule import (
+    SplitRule as SplitRuleModel,
+    SplitRuleMember as SplitRuleMemberModel
+) 
 
 from app.schemas.expense import ExpenseCreate, Expense
 from app.services.split import split_equally
@@ -111,8 +117,74 @@ def create_expense(
 
     for item in expense.items:
 
+                # Manual split overrides saved rules
+        if item.split_between is not None:
+            split_between = item.split_between
+
+            # Save this manual choice as a future category rule
+            if item.save_rule:
+                category = item.category.strip().lower()
+
+                existing_rule = db.scalar(
+                    select(SplitRuleModel).where(
+                        SplitRuleModel.household_id == expense.household_id,
+                        SplitRuleModel.match_type == "category",
+                        SplitRuleModel.match_value == category
+                    )
+                )
+
+                # Only create a rule if one does not already exist
+                if existing_rule is None:
+                    new_rule = SplitRuleModel(
+                        household_id=expense.household_id,
+                        name=category.title(),
+                        match_type="category",
+                        match_value=category,
+                        split_type="equal",
+                        members=[
+                            SplitRuleMemberModel(
+                                member_id=member_id
+                            )
+                            for member_id in split_between
+                        ]
+                    )
+
+                    db.add(new_rule)
+
+        else:
+            # Find a saved rule matching this item's category
+            matching_rule = db.scalar(
+                select(SplitRuleModel).where(
+                    SplitRuleModel.household_id == expense.household_id,
+                    SplitRuleModel.match_type == "category",
+                    SplitRuleModel.match_value == item.category.strip().lower()
+                )
+            )
+
+            if matching_rule is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "split_selection_required",
+                        "category": item.category.strip().lower(),
+                        "item": item.description
+                    }
+                )
+
+            if matching_rule.split_type != "equal":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Only equal split rules are currently supported"
+                )
+
+            split_between = [
+                rule_member.member_id
+                for rule_member in matching_rule.members
+            ]
+
+
         # Every item needs someone responsible for it
-        if len(item.split_between) == 0:
+        if len(split_between) == 0:
             raise HTTPException(
                 status_code=400,
                 detail=(
@@ -121,8 +193,9 @@ def create_expense(
                 )
             )
 
-        # Prevent duplicate roommate IDs
-        if len(item.split_between) != len(set(item.split_between)):
+
+        # Prevent duplicate member IDs
+        if len(split_between) != len(set(split_between)):
             raise HTTPException(
                 status_code=400,
                 detail=(
@@ -131,9 +204,10 @@ def create_expense(
                 )
             )
 
+
         # Make sure everyone belongs to this household
         invalid_members = (
-            set(item.split_between)
+            set(split_between)
             - household_member_ids
         )
 
@@ -147,16 +221,16 @@ def create_expense(
                 )
             )
 
+
         # HOUSE SPLIT DOES THE MATH
         calculated_splits = split_equally(
             item.amount,
-            item.split_between
+            split_between
         )
 
         split_models = []
 
         for member_id, amount in calculated_splits.items():
-
             split_models.append(
                 ItemSplitModel(
                     member_id=member_id,
@@ -164,8 +238,10 @@ def create_expense(
                 )
             )
 
+
         new_item = ExpenseItemModel(
             description=item.description,
+            category=item.category.strip().lower(),
             amount=item.amount,
             splits=split_models
         )

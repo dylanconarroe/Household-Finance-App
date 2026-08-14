@@ -13,6 +13,7 @@ from app.models.rule import (
 
 from app.schemas.rule import (
     SplitRuleCreate,
+    SplitRuleUpdate,
     SplitRule,
     SplitRuleMember
 )
@@ -171,3 +172,121 @@ def get_rules(
         rule_to_response(rule)
         for rule in rules
     ]
+
+
+@router.delete(
+    "/{rule_id}",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+def delete_rule(
+    household_id: int,
+    rule_id: int,
+    db: Session = Depends(get_db)
+):
+    rule = db.get(
+        SplitRuleModel,
+        rule_id
+    )
+
+    if rule is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Rule not found"
+        )
+
+    if rule.household_id != household_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Rule not found in this household"
+        )
+
+    db.delete(rule)
+    db.commit()
+
+
+@router.patch(
+    "/{rule_id}",
+    response_model=SplitRule
+)
+def update_rule(
+    household_id: int,
+    rule_id: int,
+    updates: SplitRuleUpdate,
+    db: Session = Depends(get_db)
+):
+    rule = db.get(
+        SplitRuleModel,
+        rule_id
+    )
+
+    if rule is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Rule not found"
+        )
+
+    if rule.household_id != household_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Rule not found in this household"
+        )
+
+    # Update rule name
+    if updates.name is not None:
+        rule.name = updates.name.strip()
+
+    # Update which members participate in the split
+    if updates.member_ids is not None:
+
+        if len(updates.member_ids) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Rule must contain at least one member"
+            )
+
+        if len(updates.member_ids) != len(set(updates.member_ids)):
+            raise HTTPException(
+                status_code=400,
+                detail="Rule contains duplicate member IDs"
+            )
+
+        household = db.get(
+            HouseholdModel,
+            household_id
+        )
+
+        household_member_ids = {
+            member.id
+            for member in household.members
+        }
+
+        invalid_members = (
+            set(updates.member_ids)
+            - household_member_ids
+        )
+
+        if invalid_members:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Rule contains members who do not belong "
+                    f"to this household: {sorted(invalid_members)}"
+                )
+            )
+
+        # Replace the old member list
+        rule.members.clear()
+
+        rule.members.extend(
+            [
+                SplitRuleMemberModel(
+                    member_id=member_id
+                )
+                for member_id in updates.member_ids
+            ]
+        )
+
+    db.commit()
+    db.refresh(rule)
+
+    return rule_to_response(rule)

@@ -22,3 +22,7 @@ class SplitRule(BaseModel):
     match_value: str
     split_type: str
     members: list[SplitRuleMember]
+
+class SplitRuleUpdate(BaseModel):
+    name: str | None = None
+    member_ids: list[int] | None = None

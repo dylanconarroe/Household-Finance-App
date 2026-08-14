@@ -7,7 +7,9 @@ from pydantic import BaseModel, ConfigDict
 class ExpenseItemCreate(BaseModel):
     description: str
     amount: Decimal
-    split_between: list[int]
+    category: str
+    split_between: list[int] | None = None
+    save_rule: bool = False
 
 
 class ItemSplit(BaseModel):
@@ -22,6 +24,7 @@ class ExpenseItem(BaseModel):
     id: int
     description: str
     amount: Decimal
+    category: str
     splits: list[ItemSplit]
 
     model_config = ConfigDict(from_attributes=True)

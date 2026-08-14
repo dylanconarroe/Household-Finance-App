@@ -75,6 +75,11 @@ class ExpenseItem(Base):
         nullable=False
     )
 
+    category: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False
+    )
+
     amount: Mapped[Decimal] = mapped_column(
         Numeric(10, 2),
         nullable=False
@@ -121,3 +126,5 @@ class ItemSplit(Base):
     item: Mapped["ExpenseItem"] = relationship(
         back_populates="splits"
     )
+
+
