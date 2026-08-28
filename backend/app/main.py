@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from app.database import Base, engine
 from app.models import household, expense, rule
-from app.routers import households, expenses, rules
+from app.routers import households, expenses, rules, receipts
 
 
 Base.metadata.create_all(bind=engine)
@@ -16,6 +16,7 @@ app = FastAPI(
 app.include_router(households.router)
 app.include_router(expenses.router)
 app.include_router(rules.router)
+app.include_router(receipts.router)
 
 
 @app.get("/")
