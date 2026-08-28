@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from app.database import Base, engine
-from app.models import household, expense, rule
+from app.models import household, expense, rule, category_mapping
 from app.routers import households, expenses, rules, receipts
 
 
