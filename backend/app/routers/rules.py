@@ -274,9 +274,15 @@ def update_rule(
                 )
             )
 
-        # Replace the old member list
+        # Remove existing members
         rule.members.clear()
 
+        # Important:
+        # execute those DELETEs before adding
+        # replacement members
+        db.flush()
+
+        # Add replacement members
         rule.members.extend(
             [
                 SplitRuleMemberModel(

@@ -1,16 +1,24 @@
 import { useEffect, useState } from "react"
 
 import ReceiptReview, {
-  type HouseholdMember,
   type ParsedReceipt,
   type ReceiptItem,
   type SplitRule,
 } from "../components/ReceiptReview"
 
-function ReceiptsPage() {
-  const [file, setFile] = useState<File | null>(null)
+import { useHousehold } from "../context/HouseholdContext"
 
-  const [isParsing, setIsParsing] = useState(false)
+function ReceiptsPage() {
+  const {
+    selectedHousehold,
+    selectedHouseholdId,
+  } = useHousehold()
+
+  const [file, setFile] =
+    useState<File | null>(null)
+
+  const [isParsing, setIsParsing] =
+    useState(false)
 
   const [result, setResult] =
     useState<ParsedReceipt | null>(null)
@@ -20,9 +28,6 @@ function ReceiptsPage() {
 
   const [rules, setRules] =
     useState<SplitRule[]>([])
-
-  const [householdMembers, setHouseholdMembers] =
-    useState<HouseholdMember[]>([])
 
   const [loadError, setLoadError] =
     useState<string | null>(null)
@@ -39,58 +44,64 @@ function ReceiptsPage() {
   const [saveSuccess, setSaveSuccess] =
     useState<string | null>(null)
 
+  /*
+    Whenever the selected household changes:
+    - clear the old receipt
+    - clear the old payer
+    - load the new household's rules
+  */
   useEffect(() => {
-    async function loadHouseholdData() {
+    async function loadRules() {
+      setRules([])
+      setResult(null)
+      setFile(null)
+      setPaidBy("")
+      setError(null)
+      setSaveError(null)
+      setSaveSuccess(null)
+      setLoadError(null)
+
+      if (selectedHouseholdId === null) {
+        return
+      }
+
       try {
-        const [rulesResponse, householdResponse] =
-          await Promise.all([
-            fetch(
-              "http://localhost:8000/households/1/rules/",
-            ),
+        const response = await fetch(
+          `http://localhost:8000/households/${selectedHouseholdId}/rules/`,
+        )
 
-            fetch(
-              "http://localhost:8000/households/1",
-            ),
-          ])
-
-        if (!rulesResponse.ok) {
+        if (!response.ok) {
           throw new Error(
             "Failed to load split rules.",
           )
         }
 
-        if (!householdResponse.ok) {
-          throw new Error(
-            "Failed to load household members.",
-          )
-        }
-
         const loadedRules: SplitRule[] =
-          await rulesResponse.json()
-
-        const household =
-          await householdResponse.json()
+          await response.json()
 
         setRules(loadedRules)
-
-        setHouseholdMembers(
-          household.members,
-        )
       } catch (err) {
         if (err instanceof Error) {
           setLoadError(err.message)
         } else {
           setLoadError(
-            "Failed to load household information.",
+            "Failed to load split rules.",
           )
         }
       }
     }
 
-    loadHouseholdData()
-  }, [])
+    loadRules()
+  }, [selectedHouseholdId])
 
   async function handleParseReceipt() {
+    if (selectedHouseholdId === null) {
+      setError(
+        "Please select a household first.",
+      )
+      return
+    }
+
     if (!file) {
       setError(
         "Please select a receipt first.",
@@ -101,7 +112,6 @@ function ReceiptsPage() {
     setIsParsing(true)
     setError(null)
     setResult(null)
-
     setSaveError(null)
     setSaveSuccess(null)
 
@@ -111,7 +121,7 @@ function ReceiptsPage() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/receipts/parse?household_id=1",
+        `http://localhost:8000/receipts/parse?household_id=${selectedHouseholdId}`,
         {
           method: "POST",
           body: formData,
@@ -144,33 +154,39 @@ function ReceiptsPage() {
   function handleRuleCreated(
     rule: SplitRule,
   ) {
-    setRules((currentRules) => [
-      ...currentRules,
-      rule,
-    ])
+    setRules(
+      (currentRules) => [
+        ...currentRules,
+        rule,
+      ],
+    )
   }
 
   function getEffectiveSplit(
     item: ReceiptItem,
   ) {
-    // Manual item override
-    if (item.split_between !== undefined) {
+    if (
+      item.split_between !== undefined
+    ) {
       return item.split_between
     }
 
-    // Otherwise use category rule
-    const matchingRule = rules.find(
-      (rule) =>
-        rule.match_type === "category" &&
-        rule.match_value === item.category,
-    )
+    const matchingRule =
+      rules.find(
+        (rule) =>
+          rule.match_type ===
+            "category" &&
+          rule.match_value ===
+            item.category,
+      )
 
     if (!matchingRule) {
       return []
     }
 
     return matchingRule.members.map(
-      (member) => member.member_id,
+      (member) =>
+        member.member_id,
     )
   }
 
@@ -186,7 +202,9 @@ function ReceiptsPage() {
     }
 
     const normalizedDate =
-      normalizeDate(receipt.expense_date)
+      normalizeDate(
+        receipt.expense_date,
+      )
 
     if (
       !/^\d{4}-\d{2}-\d{2}$/.test(
@@ -197,19 +215,27 @@ function ReceiptsPage() {
     }
 
     if (
-      !isValidMoney(receipt.subtotal) ||
+      !isValidMoney(
+        receipt.subtotal,
+      ) ||
       !isValidMoney(receipt.tax) ||
       !isValidMoney(receipt.total)
     ) {
       return "Subtotal, tax, and total must be valid numbers."
     }
 
-    for (const item of receipt.items) {
-      if (!item.description.trim()) {
+    for (
+      const item of receipt.items
+    ) {
+      if (
+        !item.description.trim()
+      ) {
         return "Every item needs a description."
       }
 
-      if (!isValidMoney(item.amount)) {
+      if (
+        !isValidMoney(item.amount)
+      ) {
         return `${item.description} has an invalid amount.`
       }
 
@@ -217,12 +243,16 @@ function ReceiptsPage() {
         return `${item.description} needs a category.`
       }
 
-      if (item.category_source !== "saved") {
+      if (
+        item.category_source !==
+        "saved"
+      ) {
         return `${item.description} still needs its category confirmed.`
       }
 
       if (
-        getEffectiveSplit(item).length === 0
+        getEffectiveSplit(item)
+          .length === 0
       ) {
         return `${item.description} must be split between at least one household member.`
       }
@@ -232,7 +262,10 @@ function ReceiptsPage() {
   }
 
   async function handleSaveExpense() {
-    if (!result) {
+    if (
+      !result ||
+      selectedHouseholdId === null
+    ) {
       return
     }
 
@@ -250,46 +283,43 @@ function ReceiptsPage() {
     setIsSaving(true)
 
     try {
-      const items = result.items.map(
-        (item) => {
-          const itemPayload: {
-            description: string
-            amount: number
-            category: string
-            split_between?: number[]
-            save_rule: boolean
-          } = {
-            description:
-              item.description.trim(),
+      const items =
+        result.items.map(
+          (item) => {
+            const itemPayload: {
+              description: string
+              amount: number
+              category: string
+              split_between?: number[]
+              save_rule: boolean
+            } = {
+              description:
+                item.description.trim(),
 
-            amount:
-              Number(item.amount),
+              amount:
+                Number(item.amount),
 
-            category:
-              item.category!,
+              category:
+                item.category!,
 
-            save_rule: false,
-          }
+              save_rule: false,
+            }
 
-          // Only send split_between if
-          // the user manually changed it.
-          //
-          // Otherwise the backend can
-          // apply the saved category rule.
-          if (
-            item.split_between !==
-            undefined
-          ) {
-            itemPayload.split_between =
-              item.split_between
-          }
+            if (
+              item.split_between !==
+              undefined
+            ) {
+              itemPayload.split_between =
+                item.split_between
+            }
 
-          return itemPayload
-        },
-      )
+            return itemPayload
+          },
+        )
 
       const payload = {
-        household_id: 1,
+        household_id:
+          selectedHouseholdId,
 
         paid_by: paidBy,
 
@@ -364,10 +394,7 @@ function ReceiptsPage() {
         "Expense saved successfully.",
       )
 
-      // Clear the reviewed receipt so
-      // it cannot accidentally be saved twice.
       setResult(null)
-
       setFile(null)
       setPaidBy("")
     } catch (err) {
@@ -383,6 +410,21 @@ function ReceiptsPage() {
     }
   }
 
+  if (!selectedHousehold) {
+    return (
+      <>
+        <h2 className="text-3xl font-bold">
+          Receipts
+        </h2>
+
+        <p className="mt-2 text-gray-500">
+          Create or select a household
+          before uploading receipts.
+        </p>
+      </>
+    )
+  }
+
   return (
     <>
       <h2 className="text-3xl font-bold">
@@ -390,10 +432,14 @@ function ReceiptsPage() {
       </h2>
 
       <p className="mt-2 text-gray-500">
-        Upload a receipt to scan and review.
+        Upload a receipt for{" "}
+        <span className="font-medium text-gray-700">
+          {selectedHousehold.name}
+        </span>
+        .
       </p>
 
-      {/* Upload card */}
+      {/* Upload */}
       <div className="mt-8 max-w-2xl rounded-xl border border-gray-200 bg-white p-6">
 
         <h3 className="text-lg font-semibold">
@@ -410,7 +456,6 @@ function ReceiptsPage() {
               null
 
             setFile(selectedFile)
-
             setSaveSuccess(null)
           }}
         />
@@ -460,18 +505,21 @@ function ReceiptsPage() {
       {result && (
         <>
           <ReceiptReview
+            householdId={
+              selectedHouseholdId
+            }
             receipt={result}
             onChange={setResult}
             rules={rules}
             householdMembers={
-              householdMembers
+              selectedHousehold.members
             }
             onRuleCreated={
               handleRuleCreated
             }
           />
 
-          {/* Save expense */}
+          {/* Save */}
           <div className="mt-6 max-w-4xl rounded-xl border border-gray-200 bg-white p-6">
 
             <h3 className="text-xl font-semibold">
@@ -479,7 +527,8 @@ function ReceiptsPage() {
             </h3>
 
             <p className="mt-1 text-sm text-gray-500">
-              Select who paid and save the reviewed receipt.
+              Select who paid and save
+              the reviewed receipt.
             </p>
 
             <div className="mt-5 max-w-sm">
@@ -502,12 +551,11 @@ function ReceiptsPage() {
                 }
                 className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
               >
-
                 <option value="">
                   Choose household member
                 </option>
 
-                {householdMembers.map(
+                {selectedHousehold.members.map(
                   (member) => (
                     <option
                       key={member.id}
@@ -517,7 +565,6 @@ function ReceiptsPage() {
                     </option>
                   ),
                 )}
-
               </select>
 
             </div>
@@ -545,7 +592,9 @@ function ReceiptsPage() {
               </div>
 
               <div className="flex justify-between text-lg font-semibold">
-                <span>Total</span>
+                <span>
+                  Total
+                </span>
 
                 <span>
                   ${result.total}

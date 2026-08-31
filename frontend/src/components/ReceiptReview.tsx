@@ -51,21 +51,16 @@ export type HouseholdMember = {
 }
 
 type ReceiptReviewProps = {
+  householdId: number
   receipt: ParsedReceipt
-
-  onChange:
-    (receipt: ParsedReceipt) => void
-
+  onChange: (receipt: ParsedReceipt) => void
   rules: SplitRule[]
-
-  householdMembers:
-    HouseholdMember[]
-
-  onRuleCreated:
-    (rule: SplitRule) => void
+  householdMembers: HouseholdMember[]
+  onRuleCreated: (rule: SplitRule) => void
 }
 
 function ReceiptReview({
+  householdId,
   receipt,
   onChange,
   rules,
@@ -335,7 +330,7 @@ function ReceiptReview({
             },
 
             body: JSON.stringify({
-              household_id: 1,
+              household_id: householdId,
               merchant:
                 receipt.merchant,
 
@@ -512,7 +507,7 @@ function ReceiptReview({
     try {
       const response =
         await fetch(
-          "http://localhost:8000/households/1/rules/",
+          `http://localhost:8000/households/${householdId}/rules/`,
           {
             method: "POST",
 

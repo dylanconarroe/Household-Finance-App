@@ -48,6 +48,19 @@ def create_household(
 
     return new_household
 
+@router.get(
+    "/",
+    response_model=list[Household]
+)
+def get_households(
+    db: Session = Depends(get_db)
+):
+    households = db.scalars(
+        select(HouseholdModel)
+    ).all()
+
+    return households
+
 
 @router.get("/{household_id}", response_model=Household)
 def get_household(

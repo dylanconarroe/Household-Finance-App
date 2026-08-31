@@ -1,36 +1,39 @@
-import { useEffect, useState } from "react"
 import MemberCard from "../components/MemberCard"
 
-type Member = {
-  id: number
-  name: string
-}
-
-type Household = {
-  id: number
-  name: string
-  members: Member[]
-}
+import { useHousehold } from "../context/HouseholdContext"
 
 function HouseholdPage() {
-  const [household, setHousehold] = useState<Household | null>(null)
+  const {
+    selectedHousehold,
+    isLoadingHouseholds,
+  } = useHousehold()
 
-  useEffect(() => {
-    fetch("http://localhost:8000/households/1")
-      .then((response) => response.json())
-      .then((data) => {
-        setHousehold(data)
-      })
-  }, [])
+  if (isLoadingHouseholds) {
+    return (
+      <p className="text-gray-500">
+        Loading household...
+      </p>
+    )
+  }
 
-  if (!household) {
-    return <p>Loading...</p>
+  if (!selectedHousehold) {
+    return (
+      <>
+        <h2 className="text-3xl font-bold">
+          Household
+        </h2>
+
+        <p className="mt-2 text-gray-500">
+          You don't have any households yet.
+        </p>
+      </>
+    )
   }
 
   return (
     <>
       <h2 className="text-3xl font-bold">
-        {household.name}
+        {selectedHousehold.name}
       </h2>
 
       <p className="mt-2 text-gray-500">
@@ -38,12 +41,16 @@ function HouseholdPage() {
       </p>
 
       <div className="mt-8 grid max-w-2xl gap-4">
-        {household.members.map((member) => (
-          <MemberCard
-            key={member.id}
-            name={member.name}
-          />
-        ))}
+
+        {selectedHousehold.members.map(
+          (member) => (
+            <MemberCard
+              key={member.id}
+              name={member.name}
+            />
+          ),
+        )}
+
       </div>
     </>
   )
