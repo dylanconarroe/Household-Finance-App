@@ -10,7 +10,7 @@ from app.models.rule import (
     SplitRule as SplitRuleModel,
     SplitRuleMember as SplitRuleMemberModel
 )
-
+from app.models.category_mapping import CategoryMapping
 from app.schemas.rule import (
     SplitRuleCreate,
     SplitRuleUpdate,
@@ -198,6 +198,16 @@ def delete_rule(
         raise HTTPException(
             status_code=404,
             detail="Rule not found in this household"
+        )
+
+    # If this is a category rule, remove any saved
+    # categorization mappings that depend on it.
+    if rule.match_type == "category":
+        db.query(CategoryMapping).filter(
+            CategoryMapping.household_id == household_id,
+            CategoryMapping.category == rule.match_value
+        ).delete(
+            synchronize_session=False
         )
 
     db.delete(rule)

@@ -7,6 +7,7 @@ import ReceiptReview, {
 } from "../components/ReceiptReview"
 
 import { useHousehold } from "../context/HouseholdContext"
+import ExpenseHistory from "../components/ExpenseHistory"
 
 function ReceiptsPage() {
   const {
@@ -43,6 +44,9 @@ function ReceiptsPage() {
 
   const [saveSuccess, setSaveSuccess] =
     useState<string | null>(null)
+
+  const [expenseHistoryRefreshKey, setExpenseHistoryRefreshKey] = 
+    useState(0)
 
   /*
     Whenever the selected household changes:
@@ -394,6 +398,10 @@ function ReceiptsPage() {
         "Expense saved successfully.",
       )
 
+      setExpenseHistoryRefreshKey(
+        (current) => current + 1,
+      )
+
       setResult(null)
       setFile(null)
       setPaidBy("")
@@ -625,6 +633,13 @@ function ReceiptsPage() {
           </div>
         </>
       )}
+
+      <ExpenseHistory
+        householdId={selectedHousehold.id}
+        householdName={selectedHousehold.name}
+        members={selectedHousehold.members}
+        refreshKey={expenseHistoryRefreshKey}
+      />
     </>
   )
 }

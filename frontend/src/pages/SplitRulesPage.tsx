@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react"
+import {
+  useEffect,
+  useState,
+} from "react"
 
-type HouseholdMember = {
-  id: number
-  name: string
-}
+import {
+  useHousehold,
+} from "../context/HouseholdContext"
 
 type RuleMember = {
   member_id: number
@@ -21,26 +23,32 @@ type SplitRule = {
 }
 
 function SplitRulesPage() {
+  const {
+    selectedHousehold,
+    selectedHouseholdId,
+  } = useHousehold()
+
   const [rules, setRules] =
     useState<SplitRule[]>([])
 
-  const [members, setMembers] =
-    useState<HouseholdMember[]>([])
-
   const [isLoading, setIsLoading] =
-    useState(true)
+    useState(false)
 
   const [error, setError] =
     useState<string | null>(null)
 
-  const [editingRuleId, setEditingRuleId] =
-    useState<number | null>(null)
+  const [
+    editingRuleId,
+    setEditingRuleId,
+  ] = useState<number | null>(null)
 
   const [editName, setEditName] =
     useState("")
 
-  const [editMemberIds, setEditMemberIds] =
-    useState<number[]>([])
+  const [
+    editMemberIds,
+    setEditMemberIds,
+  ] = useState<number[]>([])
 
   const [isSaving, setIsSaving] =
     useState(false)
@@ -48,55 +56,47 @@ function SplitRulesPage() {
   const [isCreating, setIsCreating] =
     useState(false)
 
-  const [showCreateForm, setShowCreateForm] =
-    useState(false)
+  const [
+    showCreateForm,
+    setShowCreateForm,
+  ] = useState(false)
 
-  const [newCategoryName, setNewCategoryName] =
-    useState("")
+  const [
+    newCategoryName,
+    setNewCategoryName,
+  ] = useState("")
 
   const [
     newCategoryMemberIds,
     setNewCategoryMemberIds,
   ] = useState<number[]>([])
 
-  async function loadData() {
+  async function loadRules() {
+    if (
+      selectedHouseholdId === null
+    ) {
+      setRules([])
+      return
+    }
+
     setIsLoading(true)
     setError(null)
 
     try {
-      const [
-        rulesResponse,
-        householdResponse,
-      ] = await Promise.all([
-        fetch(
-          "http://localhost:8000/households/1/rules/",
-        ),
+      const response = await fetch(
+        `http://localhost:8000/households/${selectedHouseholdId}/rules/`,
+      )
 
-        fetch(
-          "http://localhost:8000/households/1",
-        ),
-      ])
-
-      if (!rulesResponse.ok) {
+      if (!response.ok) {
         throw new Error(
           "Failed to load split rules.",
         )
       }
 
-      if (!householdResponse.ok) {
-        throw new Error(
-          "Failed to load household members.",
-        )
-      }
+      const data: SplitRule[] =
+        await response.json()
 
-      const loadedRules: SplitRule[] =
-        await rulesResponse.json()
-
-      const household =
-        await householdResponse.json()
-
-      setRules(loadedRules)
-      setMembers(household.members)
+      setRules(data)
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message)
@@ -111,8 +111,20 @@ function SplitRulesPage() {
   }
 
   useEffect(() => {
-    loadData()
-  }, [])
+    setRules([])
+
+    setEditingRuleId(null)
+    setEditName("")
+    setEditMemberIds([])
+
+    setShowCreateForm(false)
+    setNewCategoryName("")
+    setNewCategoryMemberIds([])
+
+    setError(null)
+
+    loadRules()
+  }, [selectedHouseholdId])
 
   function startEditing(
     rule: SplitRule,
@@ -156,6 +168,12 @@ function SplitRulesPage() {
   async function saveRule(
     ruleId: number,
   ) {
+    if (
+      selectedHouseholdId === null
+    ) {
+      return
+    }
+
     if (!editName.trim()) {
       setError(
         "Rule name cannot be empty.",
@@ -163,7 +181,9 @@ function SplitRulesPage() {
       return
     }
 
-    if (editMemberIds.length === 0) {
+    if (
+      editMemberIds.length === 0
+    ) {
       setError(
         "A rule must include at least one household member.",
       )
@@ -175,7 +195,7 @@ function SplitRulesPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/households/1/rules/${ruleId}`,
+        `http://localhost:8000/households/${selectedHouseholdId}/rules/${ruleId}`,
         {
           method: "PATCH",
 
@@ -185,7 +205,9 @@ function SplitRulesPage() {
           },
 
           body: JSON.stringify({
-            name: editName.trim(),
+            name:
+              editName.trim(),
+
             member_ids:
               editMemberIds,
           }),
@@ -231,6 +253,12 @@ function SplitRulesPage() {
   async function deleteRule(
     rule: SplitRule,
   ) {
+    if (
+      selectedHouseholdId === null
+    ) {
+      return
+    }
+
     const confirmed =
       window.confirm(
         `Delete the "${rule.name}" split rule?`,
@@ -244,7 +272,7 @@ function SplitRulesPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/households/1/rules/${rule.id}`,
+        `http://localhost:8000/households/${selectedHouseholdId}/rules/${rule.id}`,
         {
           method: "DELETE",
         },
@@ -285,14 +313,16 @@ function SplitRulesPage() {
   }
 
   function openCreateForm() {
+    if (!selectedHousehold) {
+      return
+    }
+
     setShowCreateForm(true)
 
     setNewCategoryName("")
 
-    // Default new categories
-    // to being shared by everyone.
     setNewCategoryMemberIds(
-      members.map(
+      selectedHousehold.members.map(
         (member) => member.id,
       ),
     )
@@ -325,6 +355,12 @@ function SplitRulesPage() {
   }
 
   async function createCategory() {
+    if (
+      selectedHouseholdId === null
+    ) {
+      return
+    }
+
     const trimmedName =
       newCategoryName.trim()
 
@@ -371,7 +407,7 @@ function SplitRulesPage() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/households/1/rules/",
+        `http://localhost:8000/households/${selectedHouseholdId}/rules/`,
         {
           method: "POST",
 
@@ -431,6 +467,21 @@ function SplitRulesPage() {
     }
   }
 
+  if (!selectedHousehold) {
+    return (
+      <>
+        <h2 className="text-3xl font-bold">
+          Split Rules
+        </h2>
+
+        <p className="mt-2 text-gray-500">
+          Create or select a household
+          before managing split rules.
+        </p>
+      </>
+    )
+  }
+
   if (isLoading) {
     return (
       <>
@@ -438,7 +489,11 @@ function SplitRulesPage() {
           Split Rules
         </h2>
 
-        <p className="mt-4 text-gray-500">
+        <p className="mt-2 text-gray-500">
+          {selectedHousehold.name}
+        </p>
+
+        <p className="mt-6 text-gray-500">
           Loading rules...
         </p>
       </>
@@ -455,7 +510,11 @@ function SplitRulesPage() {
           </h2>
 
           <p className="mt-2 text-gray-500">
-            Manage categories and who normally shares them.
+            Manage categories for{" "}
+            <span className="font-medium text-gray-700">
+              {selectedHousehold.name}
+            </span>
+            .
           </p>
         </div>
 
@@ -491,7 +550,9 @@ function SplitRulesPage() {
 
             <input
               type="text"
-              value={newCategoryName}
+              value={
+                newCategoryName
+              }
               onChange={(event) =>
                 setNewCategoryName(
                   event.target.value,
@@ -506,12 +567,13 @@ function SplitRulesPage() {
           <div className="mt-5">
 
             <p className="text-sm font-medium text-gray-700">
-              Who normally shares this category?
+              Who normally shares
+              this category?
             </p>
 
             <div className="mt-3 flex flex-wrap gap-5">
 
-              {members.map(
+              {selectedHousehold.members.map(
                 (member) => (
                   <label
                     key={member.id}
@@ -547,7 +609,9 @@ function SplitRulesPage() {
 
             <button
               type="button"
-              onClick={createCategory}
+              onClick={
+                createCategory
+              }
               disabled={isCreating}
               className="rounded-lg bg-gray-900 px-4 py-2 font-medium text-white hover:bg-gray-700 disabled:bg-gray-300"
             >
@@ -570,7 +634,7 @@ function SplitRulesPage() {
         </div>
       )}
 
-      {/* Existing rules */}
+      {/* Rules */}
       <div className="mt-8 max-w-4xl space-y-4">
 
         {rules.length === 0 && (
@@ -582,7 +646,8 @@ function SplitRulesPage() {
         {rules.map(
           (rule) => {
             const isEditing =
-              editingRuleId === rule.id
+              editingRuleId ===
+              rule.id
 
             return (
               <div
@@ -603,7 +668,8 @@ function SplitRulesPage() {
                         value={editName}
                         onChange={(event) =>
                           setEditName(
-                            event.target.value,
+                            event.target
+                              .value,
                           )
                         }
                         className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
@@ -619,7 +685,7 @@ function SplitRulesPage() {
 
                       <div className="mt-3 flex flex-wrap gap-5">
 
-                        {members.map(
+                        {selectedHousehold.members.map(
                           (member) => (
                             <label
                               key={member.id}
@@ -670,7 +736,9 @@ function SplitRulesPage() {
 
                       <button
                         type="button"
-                        onClick={cancelEditing}
+                        onClick={
+                          cancelEditing
+                        }
                         disabled={isSaving}
                         className="rounded-lg border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-100"
                       >
@@ -744,11 +812,13 @@ function SplitRulesPage() {
 
                       <div className="mt-3 flex flex-wrap gap-3">
 
-                        {members.map(
+                        {selectedHousehold.members.map(
                           (member) => {
                             const included =
                               rule.members.some(
-                                (ruleMember) =>
+                                (
+                                  ruleMember,
+                                ) =>
                                   ruleMember.member_id ===
                                   member.id,
                               )
@@ -808,7 +878,7 @@ async function getErrorMessage(
       )
     }
   } catch {
-    // Use default below.
+    // Use default message.
   }
 
   return defaultMessage

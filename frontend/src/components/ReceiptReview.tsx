@@ -852,30 +852,15 @@ function ReceiptReview({
                       </label>
 
                       <select
-                        value={
-                          item.category ??
-                          ""
-                        }
-                        disabled={
-                          item.category_source ===
-                          "saved"
-                        }
-                        onChange={(
-                          event,
-                        ) => {
+                        value={item.category ?? ""}
+                        onChange={(event) => {
                           const value =
-                            event
-                              .target
-                              .value
+                            event.target.value
 
                           if (
-                            value ===
-                            "__create_new__"
+                            value === "__create_new__"
                           ) {
-                            startCreatingCategory(
-                              index,
-                            )
-
+                            startCreatingCategory(index)
                             return
                           }
 
@@ -884,7 +869,7 @@ function ReceiptReview({
                             value,
                           )
                         }}
-                        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 disabled:bg-gray-100 disabled:text-gray-500"
+                        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
                       >
 
                         <option value="">
@@ -1273,7 +1258,9 @@ function CategorySourceBadge({
   let label = ""
 
   if (source === "saved") {
-    label = "Saved"
+    label = hasCategory
+      ? "Saved"
+      : "Needs category"
   }
 
   if (source === "ai") {

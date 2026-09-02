@@ -1,4 +1,11 @@
-import { useEffect, useState } from "react"
+import {
+  useEffect,
+  useState,
+} from "react"
+
+import {
+  useHousehold,
+} from "../context/HouseholdContext"
 
 type MemberBalance = {
   member_id: number
@@ -13,11 +20,6 @@ type HouseholdBalances = {
   balances: MemberBalance[]
 }
 
-type Household = {
-  id: number
-  name: string
-}
-
 type Settlement = {
   from: string
   to: string
@@ -25,56 +27,44 @@ type Settlement = {
 }
 
 function BalancesPage() {
+  const {
+    selectedHousehold,
+    selectedHouseholdId,
+  } = useHousehold()
+
   const [balances, setBalances] =
     useState<HouseholdBalances | null>(null)
 
-  const [household, setHousehold] =
-    useState<Household | null>(null)
-
   const [isLoading, setIsLoading] =
-    useState(true)
+    useState(false)
 
   const [error, setError] =
     useState<string | null>(null)
 
   async function loadBalances() {
+    if (selectedHouseholdId === null) {
+      setBalances(null)
+      return
+    }
+
     setIsLoading(true)
     setError(null)
 
     try {
-      const [
-        balancesResponse,
-        householdResponse,
-      ] = await Promise.all([
-        fetch(
-          "http://localhost:8000/households/1/balances",
-        ),
+      const response = await fetch(
+        `http://localhost:8000/households/${selectedHouseholdId}/balances`,
+      )
 
-        fetch(
-          "http://localhost:8000/households/1",
-        ),
-      ])
-
-      if (!balancesResponse.ok) {
+      if (!response.ok) {
         throw new Error(
           "Failed to load balances.",
         )
       }
 
-      if (!householdResponse.ok) {
-        throw new Error(
-          "Failed to load household.",
-        )
-      }
+      const data: HouseholdBalances =
+        await response.json()
 
-      const balancesData: HouseholdBalances =
-        await balancesResponse.json()
-
-      const householdData: Household =
-        await householdResponse.json()
-
-      setBalances(balancesData)
-      setHousehold(householdData)
+      setBalances(data)
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message)
@@ -89,8 +79,26 @@ function BalancesPage() {
   }
 
   useEffect(() => {
+    setBalances(null)
+    setError(null)
+
     loadBalances()
-  }, [])
+  }, [selectedHouseholdId])
+
+  if (!selectedHousehold) {
+    return (
+      <>
+        <h2 className="text-3xl font-bold">
+          Balances
+        </h2>
+
+        <p className="mt-2 text-gray-500">
+          Create or select a household
+          to view balances.
+        </p>
+      </>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -99,7 +107,11 @@ function BalancesPage() {
           Balances
         </h2>
 
-        <p className="mt-4 text-gray-500">
+        <p className="mt-2 text-gray-500">
+          {selectedHousehold.name}
+        </p>
+
+        <p className="mt-6 text-gray-500">
           Loading balances...
         </p>
       </>
@@ -112,6 +124,10 @@ function BalancesPage() {
         <h2 className="text-3xl font-bold">
           Balances
         </h2>
+
+        <p className="mt-2 text-gray-500">
+          {selectedHousehold.name}
+        </p>
 
         <div className="mt-6 max-w-2xl rounded-xl bg-red-50 p-4 text-red-600">
           {error}
@@ -144,7 +160,7 @@ function BalancesPage() {
           </h2>
 
           <p className="mt-2 text-gray-500">
-            {household?.name}
+            {selectedHousehold.name}
           </p>
         </div>
 
@@ -157,7 +173,7 @@ function BalancesPage() {
 
       </div>
 
-      {/* Member balance cards */}
+      {/* Member balances */}
       <div className="mt-8 grid max-w-5xl gap-5 md:grid-cols-2 lg:grid-cols-3">
 
         {balances?.balances.map(
@@ -170,7 +186,6 @@ function BalancesPage() {
                 key={member.member_id}
                 className="rounded-xl border border-gray-200 bg-white p-6"
               >
-
                 <h3 className="text-xl font-semibold">
                   {member.name}
                 </h3>
@@ -228,7 +243,6 @@ function BalancesPage() {
                   </div>
 
                 </div>
-
               </div>
             )
           },
@@ -244,7 +258,9 @@ function BalancesPage() {
         </h3>
 
         <p className="mt-1 text-sm text-gray-500">
-          Payments needed to settle the household balances.
+          Payments needed to settle
+          {` ${selectedHousehold.name}'s `}
+          balances.
         </p>
 
         {settlements.length === 0 ? (
@@ -295,20 +311,9 @@ function BalancesPage() {
   )
 }
 
-/*
-  Creates a settlement plan from each person's
-  net balance.
-
-  Positive balance = they should receive money.
-  Negative balance = they need to pay money.
-
-  Money is converted to cents so we avoid
-  floating-point rounding problems.
-*/
 function calculateSettlements(
   balances: MemberBalance[],
 ): Settlement[] {
-
   const creditors = balances
     .filter(
       (member) =>

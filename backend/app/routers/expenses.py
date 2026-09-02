@@ -284,3 +284,77 @@ def get_expense(
         )
 
     return expense
+
+@router.delete(
+    "/",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+def delete_expenses(
+    household_id: int,
+    db: Session = Depends(get_db)
+):
+    household = db.get(
+        HouseholdModel,
+        household_id
+    )
+
+    if household is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Household not found"
+        )
+
+    expenses = db.scalars(
+        select(ExpenseModel).where(
+            ExpenseModel.household_id == household_id
+        )
+    ).all()
+
+    for expense in expenses:
+        db.delete(expense)
+
+    db.commit()
+
+@router.delete(
+    "/{expense_id}",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+def delete_expense(
+    expense_id: int,
+    db: Session = Depends(get_db)
+):
+    expense = db.get(
+        ExpenseModel,
+        expense_id
+    )
+
+    if expense is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Expense not found"
+        )
+
+    db.delete(expense)
+    db.commit()
+
+@router.get(
+    "/",
+    response_model=list[Expense]
+)
+def get_expenses(
+    household_id: int,
+    db: Session = Depends(get_db)
+):
+    expenses = (
+        db.query(ExpenseModel)
+        .filter(
+            ExpenseModel.household_id == household_id
+        )
+        .order_by(
+            ExpenseModel.expense_date.desc(),
+            ExpenseModel.id.desc()
+        )
+        .all()
+    )
+
+    return expenses
