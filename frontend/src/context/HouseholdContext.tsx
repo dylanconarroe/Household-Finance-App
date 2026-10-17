@@ -1,4 +1,9 @@
 import {
+  API_BASE_URL,
+} from "../config/api"
+
+
+import {
   createContext,
   useContext,
   useEffect,
@@ -56,7 +61,7 @@ export function HouseholdProvider({
 
     try {
       const response = await fetch(
-        "http://localhost:8000/households/",
+        `${API_BASE_URL}/households/`,
       )
 
       if (!response.ok) {

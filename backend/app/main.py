@@ -9,6 +9,7 @@ from app.models import (
     rule,
     category_mapping,
     bill_template,
+    user,
 )
 
 from app.routers import (
@@ -17,6 +18,7 @@ from app.routers import (
     rules,
     receipts,
     bill_templates,
+    auth,
 )
 
 
@@ -43,6 +45,7 @@ app.include_router(expenses.router)
 app.include_router(rules.router)
 app.include_router(receipts.router)
 app.include_router(bill_templates.router)
+app.include_router(auth.router)
 
 
 @app.get("/")

@@ -1,4 +1,9 @@
 import {
+  API_BASE_URL,
+} from "../config/api"
+
+
+import {
   useEffect,
   useState,
 } from "react"
@@ -89,7 +94,7 @@ function BillsPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/households/${selectedHouseholdId}/bill-templates/`,
+        `${API_BASE_URL}/households/${selectedHouseholdId}/bill-templates/`,
       )
 
       if (!response.ok) {
@@ -246,7 +251,7 @@ function BillsPage() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/expenses/",
+        `${API_BASE_URL}/expenses/`,
         {
           method: "POST",
 
@@ -360,7 +365,7 @@ function BillsPage() {
         selectedTemplateId !== null
       ) {
         response = await fetch(
-          `http://localhost:8000/households/${selectedHouseholdId}/bill-templates/${selectedTemplateId}`,
+          `${API_BASE_URL}/households/${selectedHouseholdId}/bill-templates/${selectedTemplateId}`,
           {
             method: "PATCH",
 
@@ -387,7 +392,7 @@ function BillsPage() {
 
       } else {
         response = await fetch(
-          `http://localhost:8000/households/${selectedHouseholdId}/bill-templates/`,
+          `${API_BASE_URL}/households/${selectedHouseholdId}/bill-templates/`,
           {
             method: "POST",
 
@@ -476,7 +481,7 @@ function BillsPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/households/${selectedHouseholdId}/bill-templates/${template.id}`,
+        `${API_BASE_URL}/households/${selectedHouseholdId}/bill-templates/${template.id}`,
         {
           method: "DELETE",
         },

@@ -1,3 +1,8 @@
+import {
+  API_BASE_URL,
+} from "../config/api"
+
+
 import { useState } from "react"
 
 export type ReceiptItem = {
@@ -320,7 +325,7 @@ function ReceiptReview({
     try {
       const response =
         await fetch(
-          "http://localhost:8000/receipts/category-mappings",
+          `${API_BASE_URL}/receipts/category-mappings`,
           {
             method: "POST",
 
@@ -507,7 +512,7 @@ function ReceiptReview({
     try {
       const response =
         await fetch(
-          `http://localhost:8000/households/${householdId}/rules/`,
+          `${API_BASE_URL}/households/${householdId}/rules/`,
           {
             method: "POST",
 

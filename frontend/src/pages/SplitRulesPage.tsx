@@ -1,4 +1,9 @@
 import {
+  API_BASE_URL,
+} from "../config/api"
+
+
+import {
   useEffect,
   useState,
 } from "react"
@@ -84,7 +89,7 @@ function SplitRulesPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/households/${selectedHouseholdId}/rules/`,
+        `${API_BASE_URL}/households/${selectedHouseholdId}/rules/`,
       )
 
       if (!response.ok) {
@@ -195,7 +200,7 @@ function SplitRulesPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/households/${selectedHouseholdId}/rules/${ruleId}`,
+        `${API_BASE_URL}/households/${selectedHouseholdId}/rules/${ruleId}`,
         {
           method: "PATCH",
 
@@ -272,7 +277,7 @@ function SplitRulesPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/households/${selectedHouseholdId}/rules/${rule.id}`,
+        `${API_BASE_URL}/households/${selectedHouseholdId}/rules/${rule.id}`,
         {
           method: "DELETE",
         },
@@ -407,7 +412,7 @@ function SplitRulesPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/households/${selectedHouseholdId}/rules/`,
+        `${API_BASE_URL}/households/${selectedHouseholdId}/rules/`,
         {
           method: "POST",
 

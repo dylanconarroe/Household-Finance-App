@@ -1,4 +1,9 @@
 import {
+  API_BASE_URL,
+} from "../config/api"
+
+
+import {
   useEffect,
   useState,
 } from "react"
@@ -265,7 +270,7 @@ function HouseholdPage() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/households/",
+        `${API_BASE_URL}/households/`,
         {
           method: "POST",
 
@@ -381,7 +386,7 @@ function HouseholdPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/households/${selectedHousehold.id}`,
+        `${API_BASE_URL}/households/${selectedHousehold.id}`,
         {
           method: "PATCH",
 
@@ -474,7 +479,7 @@ function HouseholdPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/households/${selectedHousehold.id}/members`,
+        `${API_BASE_URL}/households/${selectedHousehold.id}/members`,
         {
           method: "POST",
 
@@ -578,7 +583,7 @@ function HouseholdPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/households/${selectedHousehold.id}/members/${memberId}`,
+        `${API_BASE_URL}/households/${selectedHousehold.id}/members/${memberId}`,
         {
           method: "PATCH",
 
@@ -657,7 +662,7 @@ function HouseholdPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/households/${selectedHousehold.id}/members/${memberId}`,
+        `${API_BASE_URL}/households/${selectedHousehold.id}/members/${memberId}`,
         {
           method: "DELETE",
         },

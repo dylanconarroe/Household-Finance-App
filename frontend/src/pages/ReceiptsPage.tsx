@@ -1,3 +1,8 @@
+import {
+  API_BASE_URL,
+} from "../config/api"
+
+
 import { useEffect, useState } from "react"
 
 import ReceiptReview, {
@@ -71,7 +76,7 @@ function ReceiptsPage() {
 
       try {
         const response = await fetch(
-          `http://localhost:8000/households/${selectedHouseholdId}/rules/`,
+          `${API_BASE_URL}/households/${selectedHouseholdId}/rules/`,
         )
 
         if (!response.ok) {
@@ -125,7 +130,7 @@ function ReceiptsPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/receipts/parse?household_id=${selectedHouseholdId}`,
+        `${API_BASE_URL}/receipts/parse?household_id=${selectedHouseholdId}`,
         {
           method: "POST",
           body: formData,
@@ -348,7 +353,7 @@ function ReceiptsPage() {
       }
 
       const response = await fetch(
-        "http://localhost:8000/expenses/",
+        `${API_BASE_URL}/expenses/`,
         {
           method: "POST",
 
@@ -514,7 +519,7 @@ function ReceiptsPage() {
         <>
           <ReceiptReview
             householdId={
-              selectedHouseholdId
+              selectedHousehold.id
             }
             receipt={result}
             onChange={setResult}

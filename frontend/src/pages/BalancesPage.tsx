@@ -1,4 +1,9 @@
 import {
+  API_BASE_URL,
+} from "../config/api"
+
+
+import {
   useEffect,
   useState,
 } from "react"
@@ -52,7 +57,7 @@ function BalancesPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/households/${selectedHouseholdId}/balances`,
+        `${API_BASE_URL}/households/${selectedHouseholdId}/balances/`,
       )
 
       if (!response.ok) {

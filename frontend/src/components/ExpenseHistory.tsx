@@ -1,4 +1,9 @@
 import {
+  API_BASE_URL,
+} from "../config/api"
+
+
+import {
   useEffect,
   useState,
 } from "react"
@@ -72,7 +77,7 @@ function ExpenseHistory({
 
     try {
       const response = await fetch(
-        `http://localhost:8000/expenses/?household_id=${householdId}`,
+        `${API_BASE_URL}/expenses/?household_id=${householdId}`,
       )
 
       if (!response.ok) {
@@ -123,7 +128,7 @@ function ExpenseHistory({
 
     try {
       const response = await fetch(
-        `http://localhost:8000/expenses/${expense.id}?household_id=${householdId}`,
+        `${API_BASE_URL}/expenses/${expense.id}?household_id=${householdId}`,
         {
           method: "DELETE",
         },
@@ -180,7 +185,7 @@ function ExpenseHistory({
 
     try {
       const response = await fetch(
-        `http://localhost:8000/expenses/?household_id=${householdId}`,
+        `${API_BASE_URL}/expenses/?household_id=${householdId}`,
         {
           method: "DELETE",
         },
