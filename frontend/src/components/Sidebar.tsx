@@ -92,6 +92,13 @@ function Sidebar() {
         </NavLink>
 
         <NavLink
+          to="/bills"
+          className={linkStyle}
+        >
+          Bills
+        </NavLink>
+
+        <NavLink
           to="/balances"
           className={linkStyle}
         >

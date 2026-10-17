@@ -5,6 +5,7 @@ import HouseholdPage from "./pages/HouseholdPage"
 import ReceiptsPage from "./pages/ReceiptsPage"
 import BalancesPage from "./pages/BalancesPage"
 import SplitRulesPage from "./pages/SplitRulesPage"
+import BillsPage from "./pages/BillsPage"
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path="/receipts" element={<ReceiptsPage />} />
           <Route path="/balances" element={<BalancesPage />} />
           <Route path="/rules" element={<SplitRulesPage />} />
+          <Route path="/bills" element={<BillsPage />} />
         </Routes>
       </main>
     </div>

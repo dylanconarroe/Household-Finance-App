@@ -1,10 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.household import Household as HouseholdModel
 from app.models.household import Member as MemberModel
-from app.schemas.household import HouseholdCreate, Household
+from app.schemas.household import (
+    HouseholdCreate,
+    HouseholdUpdate,
+    Household,
+    MemberCreate,
+    MemberUpdate,
+    Member,
+)
+from app.models.rule import SplitRule as SplitRuleModel
+from app.models.bill_template import BillTemplate as BillTemplateModel
 from app.models.expense import Expense as ExpenseModel
 from app.schemas.balance import HouseholdBalances, MemberBalance
 from app.schemas.settlement import HouseholdSettlement
@@ -80,6 +89,273 @@ def get_household(
         )
 
     return household
+
+@router.patch(
+    "/{household_id}",
+    response_model=Household
+)
+def update_household(
+    household_id: int,
+    updates: HouseholdUpdate,
+    db: Session = Depends(get_db)
+):
+    household = db.get(
+        HouseholdModel,
+        household_id
+    )
+
+    if household is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Household not found"
+        )
+
+    name = updates.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Household name cannot be empty"
+        )
+
+    household.name = name
+
+    db.commit()
+    db.refresh(household)
+
+    return household
+
+
+@router.post(
+    "/{household_id}/members",
+    response_model=Household,
+    status_code=status.HTTP_201_CREATED
+)
+def add_household_member(
+    household_id: int,
+    member_data: MemberCreate,
+    db: Session = Depends(get_db)
+):
+    household = db.get(
+        HouseholdModel,
+        household_id
+    )
+
+    if household is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Household not found"
+        )
+
+    name = member_data.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Member name cannot be empty"
+        )
+
+    duplicate_name = any(
+        member.name.strip().lower()
+        == name.lower()
+        for member in household.members
+    )
+
+    if duplicate_name:
+        raise HTTPException(
+            status_code=400,
+            detail="A member with that name already exists"
+        )
+
+    new_member = MemberModel(
+        name=name
+    )
+
+    household.members.append(
+        new_member
+    )
+
+    db.commit()
+    db.refresh(household)
+
+    return household
+
+
+@router.patch(
+    "/{household_id}/members/{member_id}",
+    response_model=Member
+)
+def update_household_member(
+    household_id: int,
+    member_id: int,
+    updates: MemberUpdate,
+    db: Session = Depends(get_db)
+):
+    household = db.get(
+        HouseholdModel,
+        household_id
+    )
+
+    if household is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Household not found"
+        )
+
+    member = next(
+        (
+            member
+            for member in household.members
+            if member.id == member_id
+        ),
+        None
+    )
+
+    if member is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Member not found in this household"
+        )
+
+    name = updates.name.strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Member name cannot be empty"
+        )
+
+    duplicate_name = any(
+        other_member.id != member_id
+        and other_member.name.strip().lower()
+        == name.lower()
+        for other_member in household.members
+    )
+
+    if duplicate_name:
+        raise HTTPException(
+            status_code=400,
+            detail="A member with that name already exists"
+        )
+
+    member.name = name
+
+    db.commit()
+    db.refresh(member)
+
+    return member
+
+
+@router.delete(
+    "/{household_id}/members/{member_id}",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+def remove_household_member(
+    household_id: int,
+    member_id: int,
+    db: Session = Depends(get_db)
+):
+    household = db.get(
+        HouseholdModel,
+        household_id
+    )
+
+    if household is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Household not found"
+        )
+
+    member = next(
+        (
+            member
+            for member in household.members
+            if member.id == member_id
+        ),
+        None
+    )
+
+    if member is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Member not found in this household"
+        )
+
+    if len(household.members) <= 1:
+        raise HTTPException(
+            status_code=400,
+            detail="A household must contain at least one member"
+        )
+
+    existing_expense = db.scalar(
+        select(ExpenseModel.id)
+        .where(
+            ExpenseModel.household_id
+            == household_id
+        )
+        .limit(1)
+    )
+
+    if existing_expense is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Cannot remove a member while this household "
+                "has saved expenses. Clear the household's "
+                "expenses first."
+            )
+        )
+
+    existing_rule = db.scalar(
+        select(SplitRuleModel.id)
+        .where(
+            SplitRuleModel.household_id
+            == household_id
+        )
+        .limit(1)
+    )
+
+    if existing_rule is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Cannot remove a member while this household "
+                "has split rules. Update or remove the rules first."
+            )
+        )
+
+    existing_template = db.scalar(
+        select(BillTemplateModel.id)
+        .where(
+            BillTemplateModel.household_id
+            == household_id
+        )
+        .limit(1)
+    )
+
+    if existing_template is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Cannot remove a member while this household "
+                "has saved bill templates. Update or remove "
+                "the templates first."
+            )
+        )
+
+    household.members.remove(
+        member
+    )
+
+    db.flush()
+
+    # If this member is not attached to any
+    # other household, remove the orphaned
+    # member record as well.
+    if len(member.households) == 0:
+        db.delete(member)
+
+    db.commit()
 
 @router.get(
     "/{household_id}/balances",

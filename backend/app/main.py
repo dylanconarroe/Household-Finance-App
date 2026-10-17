@@ -1,11 +1,26 @@
 from fastapi import FastAPI
-
-from app.database import Base, engine
-from app.models import household, expense, rule, category_mapping
-from app.routers import households, expenses, rules, receipts
-
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.database import Base, engine
+
+from app.models import (
+    household,
+    expense,
+    rule,
+    category_mapping,
+    bill_template,
+)
+
+from app.routers import (
+    households,
+    expenses,
+    rules,
+    receipts,
+    bill_templates,
+)
+
+
+Base.metadata.create_all(bind=engine)
 
 Base.metadata.create_all(bind=engine)
 
@@ -27,6 +42,7 @@ app.include_router(households.router)
 app.include_router(expenses.router)
 app.include_router(rules.router)
 app.include_router(receipts.router)
+app.include_router(bill_templates.router)
 
 
 @app.get("/")
