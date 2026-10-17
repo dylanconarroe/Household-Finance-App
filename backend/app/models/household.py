@@ -31,6 +31,12 @@ class Household(Base):
         back_populates="households"
     )
 
+    user_memberships = relationship(
+        "HouseholdUser",
+        back_populates="household",
+        cascade="all, delete-orphan",
+    )
+
 
 class Member(Base):
     __tablename__ = "members"

@@ -10,6 +10,7 @@ from app.models import (
     category_mapping,
     bill_template,
     user,
+    household_user,
 )
 
 from app.routers import (
